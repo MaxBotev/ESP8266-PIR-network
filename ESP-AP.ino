@@ -164,7 +164,7 @@ bool btnClick;
 
 // Handling the / root web page from my server
 void handle_index() {
-  server.send(200, "text/plain", "Get the fuck out from my server!");
+  server.send(200, "text/plain", "Get the f*** out from my server!");
 }
 
 // Handling the /feed page from my server
@@ -175,11 +175,11 @@ void handle_feed() {
   PIRStatus = server.arg("pir");
   Serial.println("Probe: "+p+" Wifi: "+t+" VCC: "+h+" PIR: "+PIRStatus);
   server.send(200, "text/plain", String(DefaultProbeSleep)); // Tell the probe for how long it has to sleep 
-  if (p == "1") { if (Probe1 !="online" && !Snooze) ProbeConnected; Probe1 = "online"; P1VCC = h; P1Wifi = t.toInt(); P1Alive=millis(); if (PIRStatus == "0") P1PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P1Alarm = millis();P1PIR = 1 ; P1Counts ++; if (!Snooze) Alarm();};} // reset probe's online timer
-  if (p == "2") { if (Probe2 !="online" && !Snooze) ProbeConnected; Probe2 = "online"; P2VCC = h; P2Wifi = t.toInt(); P2Alive=millis(); if (PIRStatus == "0") P2PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P2Alarm = millis();P2PIR = 1 ; P2Counts ++; if (!Snooze) Alarm();};} 
-  if (p == "3") { if (Probe3 !="online" && !Snooze) ProbeConnected; Probe3 = "online"; P3VCC = h; P3Wifi = t.toInt(); P3Alive=millis(); if (PIRStatus == "0") P3PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P3Alarm = millis();P3PIR = 1 ; P3Counts ++; if (!Snooze) Alarm();};} 
-  if (p == "4") { if (Probe4 !="online" && !Snooze) ProbeConnected; Probe4 = "online"; P4VCC = h; P4Wifi = t.toInt(); P4Alive=millis(); if (PIRStatus == "0") P4PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P4Alarm = millis();P4PIR = 1 ; P4Counts ++; if (!Snooze) Alarm();};}
-  if (p == "5") { if (Probe5 !="online" && !Snooze) ProbeConnected; Probe5 = "online"; P5VCC = h; P5Wifi = t.toInt(); P5Alive=millis(); if (PIRStatus == "0") P5PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P5Alarm = millis();P5PIR = 1 ; P5Counts ++; if (!Snooze) Alarm();};} 
+  if (p == "1") { if (Probe1 !="online" && !Snooze) ProbeConnected; Probe1 = "online"; P1VCC = h; P1Wifi = t.toInt(); P1Alive=millis(); if (PIRStatus == "0") P1PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; screen =0; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); };P1Alarm = millis();P1PIR = 1 ; P1Counts ++; if (!Snooze) Alarm();};} // reset probe's online timer
+  if (p == "2") { if (Probe2 !="online" && !Snooze) ProbeConnected; Probe2 = "online"; P2VCC = h; P2Wifi = t.toInt(); P2Alive=millis(); if (PIRStatus == "0") P2PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; screen =0; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); };P2Alarm = millis();P2PIR = 1 ; P2Counts ++; if (!Snooze) Alarm();};} 
+  if (p == "3") { if (Probe3 !="online" && !Snooze) ProbeConnected; Probe3 = "online"; P3VCC = h; P3Wifi = t.toInt(); P3Alive=millis(); if (PIRStatus == "0") P3PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; screen =0; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); };P3Alarm = millis();P3PIR = 1 ; P3Counts ++; if (!Snooze) Alarm();};} 
+  if (p == "4") { if (Probe4 !="online" && !Snooze) ProbeConnected; Probe4 = "online"; P4VCC = h; P4Wifi = t.toInt(); P4Alive=millis(); if (PIRStatus == "0") P4PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; screen =0; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); };P4Alarm = millis();P4PIR = 1 ; P4Counts ++; if (!Snooze) Alarm();};}
+  if (p == "5") { if (Probe5 !="online" && !Snooze) ProbeConnected; Probe5 = "online"; P5VCC = h; P5Wifi = t.toInt(); P5Alive=millis(); if (PIRStatus == "0") P5PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; screen =0; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); };P5Alarm = millis();P5PIR = 1 ; P5Counts ++; if (!Snooze) Alarm();};} 
   
   // Update screen 
   
@@ -241,6 +241,11 @@ void setupServer(){
 void loop() {
   server.handleClient();
 
+  if ( ((millis()-P1Alive) > DefaultProbeSleep * 60000 + 20000 ) && (Probe1=="online")) {Probe1 = "lost signal"; if (!Snooze) ProbeDisconnected();};
+  if ( ((millis()-P2Alive) > DefaultProbeSleep * 60000 + 20000 ) && (Probe2=="online")) {Probe2 = "lost signal"; if (!Snooze) ProbeDisconnected();};
+  if ( ((millis()-P3Alive) > DefaultProbeSleep * 60000 + 20000 ) && (Probe3=="online")) {Probe3 = "lost signal"; if (!Snooze) ProbeDisconnected();};
+  if ( ((millis()-P4Alive) > DefaultProbeSleep * 60000 + 20000 ) && (Probe4=="online")) {Probe4 = "lost signal"; if (!Snooze) ProbeDisconnected();};
+  if ( ((millis()-P5Alive) > DefaultProbeSleep * 60000 + 20000 ) && (Probe5=="online")) {Probe5 = "lost signal"; if (!Snooze) ProbeDisconnected();};
   
   if ((millis() - LastTouched) > ScreenSleep * 1000 * 60) {digitalWrite(TFT_LED, LOW); ScreenIsOn = false; };
 
@@ -260,18 +265,31 @@ void loop() {
 
     
    
-    if (screen == 1 && p.x > 160 && p.x < 220 && p.y > 230 && p.y < 280) {
+    if (screen == 1 && p.x > 70 && p.x < 220 && p.y > 230 && p.y < 280) {
       // Plus pressed;
       Serial.println("+ pressed");
       DefaultProbeSleep = DefaultProbeSleep + 1;
       if (DefaultProbeSleep == 71) { DefaultProbeSleep = 70; }
     } 
     else if 
-    (screen ==1 && p.x > 30 && p.x < 120 && p.y > 230 && p.y < 280) {
+    (screen ==1 && p.x > 5 && p.x < 70 && p.y > 230 && p.y < 280) {
       // Minus pressed;
       Serial.println("- pressed");
       DefaultProbeSleep = DefaultProbeSleep - 1;
       if (DefaultProbeSleep == 0) { DefaultProbeSleep = 1; }
+    } 
+    else if (screen == 1 && p.x > 70 && p.x < 220 && p.y > 10 && p.y < 150) {
+      // Plus screen sleep pressed;
+      Serial.println("+ scr pressed");
+      ScreenSleep = ScreenSleep + 1;
+      if (ScreenSleep == 60) { DefaultProbeSleep = 60; }
+    } 
+    else if 
+    (screen ==1 && p.x > 5 && p.x < 70 && p.y > 10 && p.y < 150) {
+      // Minus screen sleep pressed;
+      Serial.println("- scr pressed");
+      ScreenSleep = ScreenSleep - 1;
+      if (ScreenSleep == 0) { ScreenSleep = 1; }
     } 
 
    else if 
@@ -483,30 +501,35 @@ void drawSetup() {
  //gfx.drawString(10,10, "Probe status update time: "+String(DefaultProbeSleep)+" min");
  gfx.setFont(ArialRoundedMTBold_14);
  drawLabelValue(0, "Update time: ", String(DefaultProbeSleep)+"min");
- DrawPlus(50,70);
- DrawMinus(150,70);
- drawLabelValue(7, "Probe 1 status:", Probe1);
- drawLabelValue(9, "Probe 2 status:", Probe2);
- drawLabelValue(11, "Probe 3 status:", Probe3);
- drawLabelValue(13, "Probe 4 status:", Probe4);
- drawLabelValue(15, "Probe 5 status:", Probe5);
+ DrawPlus(120,55);
+ DrawMinus(170,55);
+ drawLabelValue(13, "Screen sleep: ", String(ScreenSleep)+"min");
+ DrawPlus(120,250);
+ DrawMinus(170,250);
+ 
+ drawLabelValue(6, "Probe 1 status:", Probe1);
+ drawLabelValue(7, "Probe 2 status:", Probe2);
+ drawLabelValue(8, "Probe 3 status:", Probe3);
+ drawLabelValue(9, "Probe 4 status:", Probe4);
+ drawLabelValue(10, "Probe 5 status:", Probe5);
  gfx.setFont(ArialMT_Plain_10);
  
 
  
- if ( Probe1 == "online" ) { drawWifiQuality (7*15+25,P1Wifi); if ( (millis()-P1Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe1 = "lost signal"; if (!Snooze) ProbeDisconnected();};}  
- if ( Probe2 == "online" ) { drawWifiQuality (9*15+25,P2Wifi); if ( (millis()-P2Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe2 = "lost signal"; if (!Snooze) ProbeDisconnected();};} 
- if ( Probe3 == "online" ) { drawWifiQuality (11*15+25,P3Wifi); if ( (millis()-P3Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe3 = "lost signal"; if (!Snooze) ProbeDisconnected();};} 
- if ( Probe4 == "online" ) { drawWifiQuality (13*15+25,P4Wifi); if ( (millis()-P4Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe4 = "lost signal"; if (!Snooze) ProbeDisconnected();};} 
- if ( Probe5 == "online" ) { drawWifiQuality (15*15+25,P5Wifi); if ( (millis()-P5Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe5 = "lost signa"; if (!Snooze) ProbeDisconnected();};} 
+ if ( Probe1 == "online" ) { drawWifiQuality (6*15+25,P1Wifi); }  
+ if ( Probe2 == "online" ) { drawWifiQuality (7*15+25,P2Wifi); } 
+ if ( Probe3 == "online" ) { drawWifiQuality (8*15+25,P3Wifi); } 
+ if ( Probe4 == "online" ) { drawWifiQuality (9*15+25,P4Wifi); } 
+ if ( Probe5 == "online" ) { drawWifiQuality (10*15+25,P5Wifi); } 
   }
 
 void DrawPlus(uint8_t x, uint8_t y)
 
 {
 
- 
- gfx.drawRect(x,y,40,40);
+ gfx.setColor(MINI_RED);
+ gfx.fillRect(x,y,40,40);
+ gfx.setColor(MINI_WHITE);
  gfx.drawLine(x+10,y+20,x+30,y+20);
  gfx.drawLine(x+20,y+10,x+20,y+30);
 
@@ -517,8 +540,9 @@ void DrawMinus(uint8_t x, uint8_t y)
 
 {
 
- 
- gfx.drawRect(x,y,40,40);
+ gfx.setColor(MINI_RED);
+ gfx.fillRect(x,y,40,40);
+ gfx.setColor(MINI_WHITE);
  gfx.drawLine(x+10,y+20,x+30,y+20);
 
   
