@@ -73,8 +73,14 @@ int P5Counts = 0;
 bool ShowCounts = false;
 bool MapStyle = false;
 bool Snooze = false;
+
 int SnoozeTime = 0;
 unsigned long SnoozeStart = 0;
+
+int ScreenSleep = 1; // turn the screen off after 1 minute by default;
+unsigned long LastTouched = 0; // when the screen was touched last time;
+bool ScreenIsOn = true;
+unsigned long JustWokeUp = 0; // do not jump the screens when wake up from sleep
 
 String PIRStatus;
 
@@ -169,11 +175,11 @@ void handle_feed() {
   PIRStatus = server.arg("pir");
   Serial.println("Probe: "+p+" Wifi: "+t+" VCC: "+h+" PIR: "+PIRStatus);
   server.send(200, "text/plain", String(DefaultProbeSleep)); // Tell the probe for how long it has to sleep 
-  if (p == "1") { Probe1 = "online"; P1VCC = h; P1Wifi = t.toInt(); P1Alive=millis(); if (PIRStatus == "0") P1PIR=0; else {P1Alarm = millis();P1PIR = 1 ; P1Counts ++; if (!Snooze) Alarm();};} // reset probe's online timer
-  if (p == "2") { Probe2 = "online"; P2VCC = h; P2Wifi = t.toInt(); P2Alive=millis(); if (PIRStatus == "0") P2PIR=0; else {P2Alarm = millis();P2PIR = 1 ; P2Counts ++; if (!Snooze) Alarm();};} 
-  if (p == "3") { Probe3 = "online"; P3VCC = h; P3Wifi = t.toInt(); P3Alive=millis(); if (PIRStatus == "0") P3PIR=0; else {P3Alarm = millis();P3PIR = 1 ; P3Counts ++; if (!Snooze) Alarm();};} 
-  if (p == "4") { Probe4 = "online"; P4VCC = h; P4Wifi = t.toInt(); P4Alive=millis(); if (PIRStatus == "0") P4PIR=0; else {P4Alarm = millis();P4PIR = 1 ; P4Counts ++; if (!Snooze) Alarm();};}
-  if (p == "5") { Probe5 = "online"; P5VCC = h; P5Wifi = t.toInt(); P5Alive=millis(); if (PIRStatus == "0") P5PIR=0; else {P5Alarm = millis();P5PIR = 1 ; P5Counts ++; if (!Snooze) Alarm();};} 
+  if (p == "1") { if (Probe1 !="online" && !Snooze) ProbeConnected; Probe1 = "online"; P1VCC = h; P1Wifi = t.toInt(); P1Alive=millis(); if (PIRStatus == "0") P1PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P1Alarm = millis();P1PIR = 1 ; P1Counts ++; if (!Snooze) Alarm();};} // reset probe's online timer
+  if (p == "2") { if (Probe2 !="online" && !Snooze) ProbeConnected; Probe2 = "online"; P2VCC = h; P2Wifi = t.toInt(); P2Alive=millis(); if (PIRStatus == "0") P2PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P2Alarm = millis();P2PIR = 1 ; P2Counts ++; if (!Snooze) Alarm();};} 
+  if (p == "3") { if (Probe3 !="online" && !Snooze) ProbeConnected; Probe3 = "online"; P3VCC = h; P3Wifi = t.toInt(); P3Alive=millis(); if (PIRStatus == "0") P3PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P3Alarm = millis();P3PIR = 1 ; P3Counts ++; if (!Snooze) Alarm();};} 
+  if (p == "4") { if (Probe4 !="online" && !Snooze) ProbeConnected; Probe4 = "online"; P4VCC = h; P4Wifi = t.toInt(); P4Alive=millis(); if (PIRStatus == "0") P4PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P4Alarm = millis();P4PIR = 1 ; P4Counts ++; if (!Snooze) Alarm();};}
+  if (p == "5") { if (Probe5 !="online" && !Snooze) ProbeConnected; Probe5 = "online"; P5VCC = h; P5Wifi = t.toInt(); P5Alive=millis(); if (PIRStatus == "0") P5PIR=0; else {if (!ScreenIsOn) {ScreenIsOn = true; digitalWrite(TFT_LED, HIGH); LastTouched = millis(); screen =0;};P5Alarm = millis();P5PIR = 1 ; P5Counts ++; if (!Snooze) Alarm();};} 
   
   // Update screen 
   
@@ -182,6 +188,31 @@ void Alarm()
 {
  tone(D0, 800); delay(100); noTone(D0); 
 }
+
+void ProbeConnected()
+{
+  int i = 800;
+  while (i < 1000) 
+   {
+    tone(D0,i);
+    i = i+ 10;
+    delay(50);
+     }
+   noTone(D0);
+  }
+
+void ProbeDisconnected()
+
+{
+  int i = 1000;
+  while (i > 500) 
+   {
+    tone(D0,i);
+    i = i - 10;
+    delay(50);
+     }
+   noTone(D0);
+  }
 
 void setupAccessPoint(){
   Serial.println("** SETUP ACCESS POINT **");
@@ -210,23 +241,33 @@ void setupServer(){
 void loop() {
   server.handleClient();
 
+  
+  if ((millis() - LastTouched) > ScreenSleep * 1000 * 60) {digitalWrite(TFT_LED, LOW); ScreenIsOn = false; };
+
+  
   if ((millis()-SnoozeStart) > 1 * 1000 *60) { SnoozeTime --; SnoozeStart = millis();}
     if (SnoozeTime <= 0) {SnoozeTime = 0; Snooze = false;};
     
   if (touchController.isTouched(500)) {
+    
+    if (!ScreenIsOn) {digitalWrite(TFT_LED, HIGH); ScreenIsOn = true; JustWokeUp = millis();};
+    LastTouched = millis();
+
+   
+  if ((millis()-JustWokeUp) > 1000) { 
     TS_Point p = touchController.getPoint();
     Serial.println(String(p.x)+"  "+String(p.y));
 
     
    
-    if (screen == 0 && p.x > 160 && p.x < 220 && p.y > 230 && p.y < 280) {
+    if (screen == 1 && p.x > 160 && p.x < 220 && p.y > 230 && p.y < 280) {
       // Plus pressed;
       Serial.println("+ pressed");
       DefaultProbeSleep = DefaultProbeSleep + 1;
       if (DefaultProbeSleep == 71) { DefaultProbeSleep = 70; }
     } 
     else if 
-    (screen ==0 && p.x > 30 && p.x < 120 && p.y > 230 && p.y < 280) {
+    (screen ==1 && p.x > 30 && p.x < 120 && p.y > 230 && p.y < 280) {
       // Minus pressed;
       Serial.println("- pressed");
       DefaultProbeSleep = DefaultProbeSleep - 1;
@@ -234,14 +275,14 @@ void loop() {
     } 
 
    else if 
-    (screen == 2 && p.x > 160 && p.x < 240 && p.y > 0 && p.y < 100) {
+    (screen == 0 && p.x > 160 && p.x < 240 && p.y > 0 && p.y < 100) {
       // Counts pressed;
       
       ShowCounts = !ShowCounts;
       Serial.println("Counts button pressed ");
     } 
   else if 
-    (screen == 2 && p.x > 80 && p.x < 160 && p.y > 0 && p.y < 100) {
+    (screen == 0 && p.x > 80 && p.x < 160 && p.y > 0 && p.y < 100) {
       // Style pressed;
       
       MapStyle = !MapStyle;
@@ -249,7 +290,7 @@ void loop() {
     }   
 
  else if 
-    (screen == 2 && p.x > 0 && p.x < 80 && p.y > 0 && p.y < 100) {
+    (screen == 0 && p.x > 0 && p.x < 80 && p.y > 0 && p.y < 100) {
       // Snooze pressed;
       if (!Snooze) Snooze = true;
       if (SnoozeTime < 30) {SnoozeTime = SnoozeTime +5;} else SnoozeTime = SnoozeTime + 30;
@@ -264,35 +305,21 @@ void loop() {
       screen = (screen + 1) % screenCount;
     }
   }
-
+  }
+if (ScreenIsOn) {
 gfx.fillBuffer(MINI_BLACK);
   if (screen == 0) {
-    drawTime();
-   /* int remainingTimeBudget = carousel.update();
-    if (remainingTimeBudget > 0) {
-      // You can do some work here
-      // Don't do stuff if you are below your
-      // time budget.
-      delay(remainingTimeBudget);
-    }
-    */
-   
-  } else if (screen == 1) {
-    drawAbout();
-  } else if (screen == 2)
     drawMap();
+
+  } else if (screen == 1) {
+    drawSetup();
+  } else if (screen == 2)
+    drawAbout();
   gfx.commit();
- if (SLEEP_INTERVAL_SECS && millis() - timerPress >= SLEEP_INTERVAL_SECS * 1000){ // after 2 minutes go to sleep
-    drawProgress(25,"Going to Sleep!");
-    delay(1000);
-    drawProgress(50,"Going to Sleep!");
-    delay(1000);
-    drawProgress(75,"Going to Sleep!");
-    delay(1000);    
-    drawProgress(100,"Going to Sleep!");
-    // go to deepsleep for xx minutes or 0 = permanently
-    ESP.deepSleep(0,  WAKE_RF_DEFAULT);                       // 0 delay = permanently to sleep
-  }  
+
+}
+
+  
   
 }
 
@@ -373,30 +400,38 @@ else
 {
   // Another map style
   gfx.setColor(MINI_WHITE);
-  gfx.drawRect(130,260,90,30); 
+  gfx.drawRect(1,270,78,30);
+  gfx.drawRect(80,270,80,30);
+  gfx.drawRect(160,270,78,30);
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.setTextAlignment(TEXT_ALIGN_CENTER); 
-  gfx.drawString(175,265,"STYLE");
+  gfx.setTextAlignment(TEXT_ALIGN_CENTER);
+  gfx.drawString(120,275,"STYLE");
+  gfx.drawString(200,275,"SNOOZE"); 
+  
+ 
+ if (Snooze) gfx.drawString(120,240,"Snooze time: "+String(SnoozeTime)+"min"); 
 
-   if (Probe1 == "online" && !P1PIR) {gfx.setColor(MINI_YELLOW); gfx.fillCircle(30,30,20); gfx.setColor(MINI_RED);  gfx.drawString(30,25,"1");}
-  else if
-     (Probe1 == "online" && P1PIR) {gfx.setColor(MINI_RED);gfx.fillCircle(30,30,20);gfx.setColor(MINI_WHITE); gfx.drawString(30,25,"1"); }
+ gfx.setTextAlignment(TEXT_ALIGN_LEFT);
 
- if (Probe2 == "online" && !P2PIR) {gfx.setColor(MINI_YELLOW); gfx.fillCircle(30,80,20);gfx.setColor(MINI_RED);  gfx.drawString(30,75,"2");}
+   if (Probe1 == "online" && !P1PIR) {gfx.setColor(MINI_YELLOW); gfx.drawRect(1,20,237,25); gfx.fillRect(1,20,20,25); gfx.setColor(MINI_RED);  gfx.drawString(5,25,"1");}
   else if
-     (Probe2 == "online" && P2PIR) {gfx.setColor(MINI_RED);gfx.fillCircle(30,80,20);gfx.setColor(MINI_WHITE); gfx.drawString(30,75,"2");}  
+     (Probe1 == "online" && P1PIR) {gfx.setColor(MINI_RED);gfx.fillRect(1,20,240,25);gfx.setColor(MINI_WHITE); gfx.drawString(5,25,"1"); }
 
-if (Probe3 == "online" && !P3PIR) {gfx.setColor(MINI_YELLOW); gfx.fillCircle(30,130,20);gfx.setColor(MINI_RED);  gfx.drawString(30,125,"3");}
+ if (Probe2 == "online" && !P2PIR) {gfx.setColor(MINI_YELLOW); gfx.drawRect(1,70,237,25); gfx.fillRect(1,70,20,25); gfx.setColor(MINI_RED);  gfx.drawString(5,75,"2");}
   else if
-     (Probe3 == "online" && P3PIR) {gfx.setColor(MINI_RED);gfx.fillCircle(30,130,20);gfx.setColor(MINI_WHITE); gfx.drawString(30,125,"3");}
+     (Probe2 == "online" && P2PIR) {gfx.setColor(MINI_RED);gfx.fillRect(1,70,240,25);gfx.setColor(MINI_WHITE); gfx.drawString(5,75,"2");}  
 
-if (Probe4 == "online" && !P4PIR) {gfx.setColor(MINI_YELLOW); gfx.fillCircle(30,180,20);gfx.setColor(MINI_RED);  gfx.drawString(30,175,"4");}
+ if (Probe3 == "online" && !P3PIR) {gfx.setColor(MINI_YELLOW); gfx.drawRect(1,120,237,25); gfx.fillRect(1,120,20,25); gfx.setColor(MINI_RED);  gfx.drawString(5,125,"3");}
   else if
-     (Probe4 == "online" && P4PIR) {gfx.setColor(MINI_RED);gfx.fillCircle(30,180,20);gfx.setColor(MINI_WHITE); gfx.drawString(30,175,"4");}
+     (Probe3 == "online" && P3PIR) {gfx.setColor(MINI_RED);gfx.fillRect(1,120,240,25);gfx.setColor(MINI_WHITE); gfx.drawString(5,125,"3"); }
 
-if (Probe5 == "online" && !P5PIR) {gfx.setColor(MINI_YELLOW); gfx.fillCircle(30,230,20);gfx.setColor(MINI_RED);  gfx.drawString(30,225,"5");}
+ if (Probe4 == "online" && !P4PIR) {gfx.setColor(MINI_YELLOW); gfx.drawRect(1,170,237,25); gfx.fillRect(1,170,20,25); gfx.setColor(MINI_RED);  gfx.drawString(5,175,"4");}
   else if
-     (Probe5 == "online" && P5PIR) {gfx.setColor(MINI_RED);gfx.fillCircle(30,230,20);gfx.setColor(MINI_WHITE);  gfx.drawString(30,225,"5"); }    
+     (Probe4 == "online" && P4PIR) {gfx.setColor(MINI_RED);gfx.fillRect(1,170,240,25);gfx.setColor(MINI_WHITE); gfx.drawString(5,175,"4");}    
+
+ if (Probe5 == "online" && !P5PIR) {gfx.setColor(MINI_YELLOW); gfx.drawRect(1,220,237,25); gfx.fillRect(1,220,20,25); gfx.setColor(MINI_RED);  gfx.drawString(5,225,"5");}
+  else if
+     (Probe5 == "online" && P5PIR) {gfx.setColor(MINI_RED);gfx.fillRect(1,220,240,25);gfx.setColor(MINI_WHITE); gfx.drawString(5,225,"5");}    
 
  // Draw stats for online and "lost signal" probes
   gfx.setColor(MINI_WHITE);
@@ -410,7 +445,8 @@ if (Probe5 == "online" && !P5PIR) {gfx.setColor(MINI_YELLOW); gfx.fillCircle(30,
     
     uint8_t minutes = (millis()-P1Alarm) / 1000 / 60;  
     
-    gfx.drawString(60,25,"Counts: "+String(P1Counts)+" Last: "+String(minutes)+" min ago"); 
+    gfx.drawString(22,25,"Last: "+String(minutes)+" min ago, counts: "+String(P1Counts)); 
+    if (Probe1 == "lost signal") gfx.drawString(5,25,"1");
     
   } 
   
@@ -418,28 +454,32 @@ if (Probe5 == "online" && !P5PIR) {gfx.setColor(MINI_YELLOW); gfx.fillCircle(30,
   
   uint8_t minutes = (millis()-P2Alarm) / 1000 / 60;  
     
-    gfx.drawString(60,75,"Counts: "+String(P2Counts)+" Last: "+String(minutes)+" min ago"); 
+    gfx.drawString(22,75,"Last: "+String(minutes)+" min ago, counts: "+String(P2Counts));
+    if (Probe2 == "lost signal") gfx.drawString(5,75,"2");
   }
   if ( Probe3 != "offline") {
   uint8_t minutes = (millis()-P3Alarm) / 1000 / 60;  
     
-    gfx.drawString(60,125,"Counts: "+String(P3Counts)+" Last: "+String(minutes)+" min ago"); 
+    gfx.drawString(22,125,"Counts: "+String(P3Counts)+" Last: "+String(minutes)+" min ago"); 
+    if (Probe3 == "lost signal") gfx.drawString(5,125,"3");
   }
   if ( Probe4 != "offline") {
   uint8_t minutes = (millis()-P4Alarm) / 1000 / 60;  
     
-    gfx.drawString(60,175,"Counts: "+String(P4Counts)+" Last: "+String(minutes)+" min ago"); 
+    gfx.drawString(22,175,"Counts: "+String(P4Counts)+" Last: "+String(minutes)+" min ago"); 
+    if (Probe4 == "lost signal") gfx.drawString(5,175,"4");
   }
   if ( Probe5 != "offline") {
     uint8_t minutes = (millis()-P5Alarm) / 1000 / 60;  
     
-    gfx.drawString(60,225,"Counts: "+String(P5Counts)+" Last: "+String(minutes)+" min ago"); 
+    gfx.drawString(22,225,"Counts: "+String(P5Counts)+" Last: "+String(minutes)+" min ago");
+    if (Probe5 == "lost signal") gfx.drawString(5,225,"5"); 
   }
   }
      
  
 }
-void drawTime() {
+void drawSetup() {
  //gfx.drawString(10,10, "Probe status update time: "+String(DefaultProbeSleep)+" min");
  gfx.setFont(ArialRoundedMTBold_14);
  drawLabelValue(0, "Update time: ", String(DefaultProbeSleep)+"min");
@@ -454,11 +494,11 @@ void drawTime() {
  
 
  
- if ( Probe1 == "online" ) { drawWifiQuality (7*15+25,P1Wifi); if ( (millis()-P1Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe1 = "lost signal";};}  
- if ( Probe2 == "online" ) { drawWifiQuality (9*15+25,P2Wifi); if ( (millis()-P2Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe2 = "lost signal";};} 
- if ( Probe3 == "online" ) { drawWifiQuality (11*15+25,P3Wifi); if ( (millis()-P3Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe3 = "lost signal";};} 
- if ( Probe4 == "online" ) { drawWifiQuality (13*15+25,P4Wifi); if ( (millis()-P4Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe4 = "lost signal";};} 
- if ( Probe5 == "online" ) { drawWifiQuality (15*15+25,P5Wifi); if ( (millis()-P5Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe5 = "lost signa";};} 
+ if ( Probe1 == "online" ) { drawWifiQuality (7*15+25,P1Wifi); if ( (millis()-P1Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe1 = "lost signal"; if (!Snooze) ProbeDisconnected();};}  
+ if ( Probe2 == "online" ) { drawWifiQuality (9*15+25,P2Wifi); if ( (millis()-P2Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe2 = "lost signal"; if (!Snooze) ProbeDisconnected();};} 
+ if ( Probe3 == "online" ) { drawWifiQuality (11*15+25,P3Wifi); if ( (millis()-P3Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe3 = "lost signal"; if (!Snooze) ProbeDisconnected();};} 
+ if ( Probe4 == "online" ) { drawWifiQuality (13*15+25,P4Wifi); if ( (millis()-P4Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe4 = "lost signal"; if (!Snooze) ProbeDisconnected();};} 
+ if ( Probe5 == "online" ) { drawWifiQuality (15*15+25,P5Wifi); if ( (millis()-P5Alive) > DefaultProbeSleep * 60000 + 20000 ) {Probe5 = "lost signa"; if (!Snooze) ProbeDisconnected();};} 
   }
 
 void DrawPlus(uint8_t x, uint8_t y)
@@ -525,16 +565,16 @@ void drawAbout() {
   gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   gfx.setColor(MINI_WHITE);
-  gfx.drawString(120, 80, "HondaMafia");
+  gfx.drawString(120, 80, "Know the bear is coming :-)");
 
   gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   drawLabelValue(7, "Heap Mem:", String(ESP.getFreeHeap() / 1024)+"kb");
   drawLabelValue(8, "Flash Mem:", String(ESP.getFlashChipRealSize() / 1024 / 1024) + "MB");
-  drawLabelValue(9, "WiFi Strength:", String(WiFi.RSSI()) + "dB");
-  drawLabelValue(10, "Chip ID:", String(ESP.getChipId()));
-  drawLabelValue(11, "VCC: ", String(ESP.getVcc() / 1024.0) +"V");
-  drawLabelValue(12, "CPU Freq.: ", String(ESP.getCpuFreqMHz()) + "MHz");
+  //drawLabelValue(9, "WiFi Strength:", String(WiFi.RSSI()) + "dB");
+  drawLabelValue(9, "Chip ID:", String(ESP.getChipId()));
+  drawLabelValue(10, "VCC: ", String(ESP.getVcc() / 1024.0) +"V");
+  drawLabelValue(11, "CPU Freq.: ", String(ESP.getCpuFreqMHz()) + "MHz");
   char time_str[15];
   const uint32_t millis_in_day = 1000 * 60 * 60 * 24;
   const uint32_t millis_in_hour = 1000 * 60 * 60;
